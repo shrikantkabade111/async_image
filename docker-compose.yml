@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - app_network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - app_network
+
+  haproxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.haproxy
+    ports:
+      - "80:80"
+      - "8081:8081"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+      - ./haproxy-errors:/usr/local/etc/haproxy/errors
+      - haproxy_state:/var/lib/haproxy
+    depends_on:
+      - api1
+      - api2
+      - api3
+    networks:
+      - app_network
+
+  api1:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - PORT=8000
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      - minio
+      - rabbitmq
+    networks:
+      - app_network
+
+  api2:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - PORT=8001
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      - minio
+      - rabbitmq
+    networks:
+      - app_network
+
+  api3:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - PORT=8002
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      - minio
+      - rabbitmq
+    networks:
+      - app_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      - minio
+      - rabbitmq
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  haproxy_state:
+  minio_data:

@@ -1,0 +1,22 @@
+FROM python:3.8-slim
+
+WORKDIR /app
+
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY api_service.py .
+COPY database.py .
+COPY storage.py .
+COPY broker.py .
+
+# Set environment variables
+ENV PORT=8000
+
+# Expose the port
+EXPOSE ${PORT}
+
+# Run the application
+CMD ["sh", "-c", "uvicorn api_service:app --host 0.0.0.0 --port ${PORT}"] 

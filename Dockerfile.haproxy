@@ -1,0 +1,8 @@
+FROM haproxy:2.8
+
+COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
+COPY haproxy-errors /usr/local/etc/haproxy/errors
+
+EXPOSE 80 8081
+
+CMD ["haproxy", "-f", "/usr/local/etc/haproxy/haproxy.cfg"] 
